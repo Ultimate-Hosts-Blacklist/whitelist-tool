@@ -9,9 +9,9 @@ License:
 
     MIT License
 
-    Copyright (c) 2018, 2019, 2020, 2020 Ultimate-Hosts-Blacklist
-    Copyright (c) 2018, 2019, 2020, 2020 Nissar Chababy
-    Copyright (c) 2019, 2020 Mitchell Krog
+    Copyright (c) 2018, 2019, 2020, 2020, 2021, 2022 Ultimate-Hosts-Blacklist
+    Copyright (c) 2018, 2019, 2020, 2020, 2021, 2022 Nissar Chababy
+    Copyright (c) 2019, 2020, 2021, 2022 Mitchell Krog
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to deal
@@ -33,7 +33,9 @@ License:
 """
 # pylint:disable=too-few-public-methods
 
+
 from ultimate_hosts_blacklist.helpers import Dict, List
+
 from ultimate_hosts_blacklist.whitelist.configuration import Configuration
 from ultimate_hosts_blacklist.whitelist.rzdb import RZDB
 
@@ -226,6 +228,10 @@ class Parser:
                     result = Dict(result).merge(
                         self.__parse_parsed(parsed), strict=False
                     )
+
+                for index, value in result.items():
+                    if not value:
+                        result[index] = {}
 
             if result["regex"]:
                 result["regex"] = "({0})".format("|".join(result["regex"]))

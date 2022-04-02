@@ -9,9 +9,9 @@ License:
 
     MIT License
 
-    Copyright (c) 2018, 2019, 2020, 2020 Ultimate-Hosts-Blacklist
-    Copyright (c) 2018, 2019, 2020, 2020 Nissar Chababy
-    Copyright (c) 2019, 2020 Mitchell Krog
+    Copyright (c) 2018, 2019, 2020, 2020, 2021, 2022 Ultimate-Hosts-Blacklist
+    Copyright (c) 2018, 2019, 2020, 2020, 2021, 2022 Nissar Chababy
+    Copyright (c) 2019, 2020, 2021, 2022 Mitchell Krog
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to deal
@@ -32,18 +32,25 @@ License:
     SOFTWARE.
 """
 
-
+import io
 import logging
 import sys
 from itertools import filterfalse
 from multiprocessing import Pool
-from os import cpu_count, environ, sep
-from tempfile import NamedTemporaryFile, TemporaryDirectory
+from os import cpu_count
+from tempfile import NamedTemporaryFile
 
-import PyFunceble
+from colorama import Fore, Style
 from domain2idna import domain2idna
+from PyFunceble.checker.syntax.url import URLSyntaxChecker
+from PyFunceble.cli.utils.sort import hierarchical as hierarchical_sort_key
+from PyFunceble.cli.utils.sort import standard as standard_sort_key
+from PyFunceble.converter.url2netloc import Url2Netloc
+from PyFunceble.helpers.download import DownloadHelper
+from PyFunceble.helpers.file import FileHelper
+from PyFunceble.helpers.list import ListHelper
+from PyFunceble.helpers.regex import RegexHelper
 
-from ultimate_hosts_blacklist.helpers import Download, File, Regex
 from ultimate_hosts_blacklist.whitelist.configuration import Configuration
 from ultimate_hosts_blacklist.whitelist.parser import Parser
 
@@ -66,14 +73,7 @@ def _is_whitelisted(line, manifest):  # pylint: disable=too-many-branches
     if isinstance(line, str):
         to_check = line.split()[-1]
 
-        try:
-            url_base = PyFunceble.Check(to_check).is_url(return_base=True)
-        except AttributeError:  # pragma: no cover
-            PyFunceble.load_config(generate_directory_structure=False)
-            url_base = PyFunceble.Check(to_check).is_url(return_base=True)
-
-        if url_base is not False:  # pragma: no cover
-            to_check = url_base
+        to_check = Url2Netloc(to_check).get_converted()
     else:  # pragma: no cover
         raise ValueError("expected {0}. {1} given.".format(str, type(line)))
 
@@ -114,9 +114,8 @@ def _is_whitelisted(line, manifest):  # pylint: disable=too-many-branches
                     )
                     return True, line
 
-        if (
-            manifest["regex"]
-            and Regex(to_check, manifest["regex"], return_data=False).match()
+        if manifest["regex"] and RegexHelper(manifest["regex"]).match(
+            to_check, return_match=False
         ):
             logging.debug("Line %s whitelisted by %s rule.", repr(line), repr("regex"))
             return True, line
@@ -213,11 +212,7 @@ class Core:  # pylint: disable=too-few-public-methods,too-many-arguments, too-ma
             filename=logging_file,
         )
 
-        self.pyfunceble_config_dir = TemporaryDirectory(prefix="UHBW_PYFUNCEBLE")
-        environ["PYFUNCEBLE_AUTO_CONFIGURATION"] = "YES"
-        PyFunceble.CONFIG_DIRECTORY = self.pyfunceble_config_dir.name + sep
-
-        PyFunceble.load_config(generate_directory_structure=False)
+        self.temporary_output_file = self.__get_temp_file().name
 
         self.secondary_whitelist_file = self.__download_file(secondary_whitelist_file)
         self.secondary_whitelist_list = secondary_whitelist
@@ -246,10 +241,17 @@ class Core:  # pylint: disable=too-few-public-methods,too-many-arguments, too-ma
                 self.processes = processes
 
     def __del__(self):
-        for file_path in self.files_to_delete:
-            PyFunceble.helpers.File(file_path=file_path).delete()
+        try:
+            if self.output:
+                FileHelper(self.temporary_output_file).move(self.output)
+        except AttributeError:
+            pass
 
-        self.pyfunceble_config_dir.cleanup()
+        try:
+            for file_path in self.files_to_delete:
+                FileHelper(file_path).delete()
+        except AttributeError:
+            pass
 
     @classmethod
     def __get_our_special_rules(cls):
@@ -300,13 +302,24 @@ class Core:  # pylint: disable=too-few-public-methods,too-many-arguments, too-ma
         """
 
         if force_check and file is not None:
-            if not PyFunceble.helpers.File(file).exists():
-                print(f"Error: {file} does not exist.")
+            if not FileHelper(file).exists():
+                print(f"{Fore.RED}{Style.BRIGHT}Error: {file} does not exist.")
                 sys.exit(1)
 
-            return open(file, "r")
+            return open(file, "r", encoding="utf-8")
 
         return file
+
+    def __get_temp_file(self):  # pragma: no cover
+        """
+        Provides a new temporary file.
+        """
+
+        # pylint: disable=consider-using-with
+        destination = NamedTemporaryFile(delete=False)
+        self.files_to_delete.append(destination.name)
+
+        return destination
 
     def __download_file(self, file):  # pragma: no cover
         """
@@ -318,11 +331,13 @@ class Core:  # pylint: disable=too-few-public-methods,too-many-arguments, too-ma
             return [self.__download_file(x) for x in file]
 
         if file:
-            if PyFunceble.Check(file).is_url():
-                destination = NamedTemporaryFile(delete=False)
+            if isinstance(file, io.TextIOWrapper):
+                file = file.name
 
-                PyFunceble.helpers.Download(file).text(destination=destination.name)
-                self.files_to_delete.append(destination.name)
+            if URLSyntaxChecker(file).is_valid():
+                destination = self.__get_temp_file()
+
+                DownloadHelper(file).download_text(destination=destination.name)
 
                 return destination
 
@@ -464,9 +479,7 @@ class Core:  # pylint: disable=too-few-public-methods,too-many-arguments, too-ma
 
         if self.use_core:
             result = (
-                Download(Configuration.links["core"], destination=None)
-                .link()
-                .split("\n")
+                DownloadHelper(Configuration.links["core"]).download_text().split("\n")
             )
         else:
             result = []
@@ -501,7 +514,9 @@ class Core:  # pylint: disable=too-few-public-methods,too-many-arguments, too-ma
         tabs = "\t"
         space = " "
 
-        if Regex(line, regex_delete, return_data=True).match():  # pragma: no cover
+        if RegexHelper(regex_delete).match(
+            line, return_match=False
+        ):  # pragma: no cover
             return line
 
         tabs_position, space_position = (line.find(tabs), line.find(space))
@@ -514,31 +529,28 @@ class Core:  # pylint: disable=too-few-public-methods,too-many-arguments, too-ma
             separator = None
 
         if separator:
-            splited_line = line.split(separator)
+            splitted_line = line.split(separator)
 
             index = 0
-            while index < len(splited_line):
-                if (
-                    splited_line[index]
-                    and not Regex(
-                        splited_line[index], regex_delete, return_data=False
-                    ).match()
+            while index < len(splitted_line):
+                if splitted_line[index] and not RegexHelper(regex_delete).match(
+                    splitted_line[index], return_match=False
                 ):
                     break
                 index += 1
 
-            if "#" in splited_line[index]:
-                index_comment = splited_line[index].find("#")
+            if "#" in splitted_line[index]:
+                index_comment = splitted_line[index].find("#")
 
                 if index_comment > -1:
-                    comment = splited_line[index][index_comment:]
+                    comment = splitted_line[index][index_comment:]
 
-                    element = splited_line[index].split(comment)[0]
-                    splited_line[index] = domain2idna(element) + comment
+                    element = splitted_line[index].split(comment)[0]
+                    splitted_line[index] = domain2idna(element) + comment
             else:
-                splited_line[index] = domain2idna(splited_line[index])
+                splitted_line[index] = domain2idna(splitted_line[index])
 
-            return separator.join(splited_line)
+            return separator.join(splitted_line)
         return domain2idna(line)
 
     def __write_output(
@@ -561,7 +573,9 @@ class Core:  # pylint: disable=too-few-public-methods,too-many-arguments, too-ma
                     self.__process_sorting(line, standard_sorting, hierarchical_sorting)
                 )
 
-            File(self.output).write("{0}\n".format(line), overwrite=True)
+            FileHelper(self.temporary_output_file).write(
+                "{0}\n".format(line), overwrite=True
+            )
 
         return line
 
@@ -603,14 +617,10 @@ class Core:  # pylint: disable=too-few-public-methods,too-many-arguments, too-ma
         """
 
         if standard:
-            return PyFunceble.helpers.List(to_sort).custom_format(
-                PyFunceble.engine.Sort.standard
-            )
+            return ListHelper(to_sort).custom_sort(standard_sort_key).subject
 
         if hierarchical:
-            return PyFunceble.helpers.List(to_sort).custom_format(
-                PyFunceble.engine.Sort.hierarchical
-            )
+            return ListHelper(to_sort).custom_sort(hierarchical_sort_key).subject
 
         return to_sort
 

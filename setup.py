@@ -7,9 +7,9 @@ License:
 
     MIT License
 
-    Copyright (c) 2018, 2019, 2020, 2020 Ultimate-Hosts-Blacklist
-    Copyright (c) 2018, 2019, 2020, 2020 Nissar Chababy
-    Copyright (c) 2019, 2020 Mitchell Krog
+    Copyright (c) 2018, 2019, 2020, 2020, 2021, 2022 Ultimate-Hosts-Blacklist
+    Copyright (c) 2018, 2019, 2020, 2020, 2021, 2022 Nissar Chababy
+    Copyright (c) 2019, 2020, 2021, 2022 Mitchell Krog
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to deal
@@ -97,6 +97,8 @@ if __name__ == "__main__":
         install_requires=_get_requirements(),
         description="The whitelisting tool of the Ultimate Hosts Blacklist project.",
         long_description=_get_long_description(),
+        author="funilrys",
+        author_email="contact@funilrys.com",
         license="MIT",
         url="https://github.com/Ultimate-Hosts-Blacklist/whitelist/tree/script",
         platforms=["any"],
@@ -120,9 +122,8 @@ if __name__ == "__main__":
                 "uhb-whitelist=ultimate_hosts_blacklist.{0}:_command_line".format(
                     MODULE
                 ),
-                "ultimate-hosts-blacklist-whitelist=ultimate_hosts_blacklist.{0}:_command_line".format(
-                    MODULE
-                ),
+                "ultimate-hosts-blacklist-whitelist=ultimate_hosts_blacklist."
+                "{0}:_command_line".format(MODULE),
             ]
         },
     )
