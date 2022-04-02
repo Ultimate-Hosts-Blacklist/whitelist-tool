@@ -2,8 +2,8 @@ name: Script deployment Workflow
 on:
   push:
     branches:
-      - script
-      - script-dev
+      - master
+      - dev
 
 jobs:
   lint:
@@ -105,14 +105,14 @@ jobs:
 
       - name: Publish 📦 to PyPI
         uses: pypa/gh-action-pypi-publish@master
-        if: github.ref == 'refs/heads/script-dev'
+        if: github.ref == 'refs/heads/dev'
         with:
           password: ${{ secrets.PYPI_DEV_API_TOKEN }}
           skip_existing: true
 
       - name: Publish 📦 to PyPI
         uses: pypa/gh-action-pypi-publish@master
-        if: github.ref == 'refs/heads/script'
+        if: github.ref == 'refs/heads/master'
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
           skip_existing: true
