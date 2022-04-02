@@ -9,9 +9,9 @@ License:
 
     MIT License
 
-    Copyright (c) 2018, 2019, 2020, 2020 Ultimate-Hosts-Blacklist
-    Copyright (c) 2018, 2019, 2020, 2020 Nissar Chababy
-    Copyright (c) 2019, 2020 Mitchell Krog
+    Copyright (c) 2018, 2019, 2020, 2020, 2021, 2022 Ultimate-Hosts-Blacklist
+    Copyright (c) 2018, 2019, 2020, 2020, 2021, 2022 Nissar Chababy
+    Copyright (c) 2019, 2020, 2021, 2022 Mitchell Krog
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to deal
@@ -32,7 +32,7 @@ License:
     SOFTWARE.
 """
 
-
+import io
 import logging
 import sys
 from itertools import filterfalse
@@ -241,11 +241,17 @@ class Core:  # pylint: disable=too-few-public-methods,too-many-arguments, too-ma
                 self.processes = processes
 
     def __del__(self):
-        if self.output:
-            FileHelper(self.temporary_output_file).move(self.output)
+        try:
+            if self.output:
+                FileHelper(self.temporary_output_file).move(self.output)
+        except AttributeError:
+            pass
 
-        for file_path in self.files_to_delete:
-            FileHelper(file_path).delete()
+        try:
+            for file_path in self.files_to_delete:
+                FileHelper(file_path).delete()
+        except AttributeError:
+            pass
 
     @classmethod
     def __get_our_special_rules(cls):
@@ -300,7 +306,7 @@ class Core:  # pylint: disable=too-few-public-methods,too-many-arguments, too-ma
                 print(f"{Fore.RED}{Style.BRIGHT}Error: {file} does not exist.")
                 sys.exit(1)
 
-            return open(file, "r")
+            return open(file, "r", encoding="utf-8")
 
         return file
 
@@ -309,6 +315,7 @@ class Core:  # pylint: disable=too-few-public-methods,too-many-arguments, too-ma
         Provides a new temporary file.
         """
 
+        # pylint: disable=consider-using-with
         destination = NamedTemporaryFile(delete=False)
         self.files_to_delete.append(destination.name)
 
@@ -324,6 +331,9 @@ class Core:  # pylint: disable=too-few-public-methods,too-many-arguments, too-ma
             return [self.__download_file(x) for x in file]
 
         if file:
+            if isinstance(file, io.TextIOWrapper):
+                file = file.name
+
             if URLSyntaxChecker(file).is_valid():
                 destination = self.__get_temp_file()
 
