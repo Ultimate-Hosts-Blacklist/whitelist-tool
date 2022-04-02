@@ -38,7 +38,7 @@ import sys
 from itertools import filterfalse
 from multiprocessing import Pool
 from os import cpu_count
-from tempfile import NamedTemporaryFile
+from tempfile import NamedTemporaryFile, _TemporaryFileWrapper
 
 from colorama import Fore, Style
 from domain2idna import domain2idna
@@ -302,6 +302,9 @@ class Core:  # pylint: disable=too-few-public-methods,too-many-arguments, too-ma
         """
 
         if force_check and file is not None:
+            if isinstance(file, _TemporaryFileWrapper):
+                file = file.name
+
             if not FileHelper(file).exists():
                 print(f"{Fore.RED}{Style.BRIGHT}Error: {file} does not exist.")
                 sys.exit(1)
