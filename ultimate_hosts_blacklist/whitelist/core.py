@@ -35,6 +35,7 @@ License:
 import io
 import logging
 import sys
+import copy
 from itertools import filterfalse
 from multiprocessing import Pool
 from os import cpu_count
@@ -70,55 +71,56 @@ def _is_whitelisted(line, manifest):  # pylint: disable=too-many-branches
     logging.debug("Given line: %s", repr(line))
     line = line.strip()
 
-    if isinstance(line, str):
-        to_check = line.split()[-1]
+    clean_line = line.split()[-1]
+    to_search = [Url2Netloc(clean_line).get_converted()]
 
-        to_check = Url2Netloc(to_check).get_converted()
-    else:  # pragma: no cover
-        raise ValueError("expected {0}. {1} given.".format(str, type(line)))
+    if clean_line.startswith("http://") or clean_line.startswith("https://"):
+        to_search.append(clean_line)
 
-    logging.debug("To check: %s", repr(to_check))
+    logging.debug("To search: %r", repr(to_search))
+    logging.debug("To search (manifest): %s", repr(manifest))
 
     if manifest:
-        if to_check.startswith("www."):
-            bare = to_check[4:]
-        else:
-            bare = to_check
+        for to_check in to_search:
+            if to_check.startswith("www."):
+                bare = to_check[4:]
+            else:
+                bare = to_check
 
-        if bare[:4] in manifest["strict"] and to_check in manifest["strict"][bare[:4]]:
-            logging.debug(
-                "Line %s whitelisted by %s rule: %s.",
-                repr(line),
-                repr("strict"),
-                repr(line),
-            )
-            return True, line
+            if bare[:4] in manifest["strict"] and to_check in manifest["strict"][bare[:4]]:
+                logging.debug(
+                    "Line %s whitelisted by %s rule: %s.",
+                    repr(line),
+                    repr("strict"),
+                    repr(line),
+                )
+                return True, line
 
-        if (
-            bare[:4] in manifest["present"]
-            and to_check in manifest["present"][bare[:4]]
-        ):
-            logging.debug(
-                "Line %s whitelisted by %s rule.", repr(line), repr("present")
-            )
-            return True, line
+            if (
+                bare[:4] in manifest["present"]
+                and to_check in manifest["present"][bare[:4]]
+            ):
+                logging.debug(
+                    "Line %s whitelisted by %s rule.", repr(line), repr("present")
+                )
+                return True, line
 
-        if bare[-3:] in manifest["ends"]:  # pragma: no cover
-            for rule in manifest["ends"][bare[-3:]]:
-                if to_check.endswith(rule):
-                    logging.debug(
-                        "Line %s whitelisted by %s rule: %s.",
-                        repr(line),
-                        repr("ends"),
-                        repr(rule),
-                    )
-                    return True, line
+            if bare[-3:] in manifest["ends"]:  # pragma: no cover
+                for rule in manifest["ends"][bare[-3:]]:
+                    if to_check.endswith(rule):
+                        logging.debug(
+                            "Line %s whitelisted by %s rule: %s.",
+                            repr(line),
+                            repr("ends"),
+                            repr(rule),
+                        )
+                        return True, line
 
-        if manifest["regex"] and RegexHelper(manifest["regex"]).match(
-            to_check, return_match=False
-        ):
-            logging.debug("Line %s whitelisted by %s rule.", repr(line), repr("regex"))
-            return True, line
+            if manifest["regex"] and RegexHelper(manifest["regex"]).match(
+                to_check, return_match=False
+            ):
+                logging.debug("Line %s whitelisted by %s rule.", repr(line), repr("regex"))
+                return True, line
 
     logging.debug("Line %s not whitelisted, no rule matched.", repr(line))
     return False, line

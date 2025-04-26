@@ -128,7 +128,7 @@ class TestFiltering(TestCase):
         Test a simple case.
         """
 
-        secondary_whitelist = ["google.com", None, b"example.org"]
+        secondary_whitelist = ["google.com", None, b"example.org", "https://example.de/foobar", "http://example.fr/foobar"]
         given = [
             "0.0.0.0    google.com",
             None,
@@ -164,6 +164,12 @@ class TestFiltering(TestCase):
             "http://www.google.com",
             "https://google.com",
             "www.google.com",
+            "https://example.de/foobar",
+            "http://example.fr/foobar",
+            "https://example.de",
+            "https://example.fr",
+            "http://example.de",
+            "http://example.fr"
         ]
 
         expected = [
@@ -176,6 +182,10 @@ class TestFiltering(TestCase):
             "10.212.54.132200sync-tm.everesttech.net",
             "10.212.54.132200sync.jivox.com",
             "160.41.54.45.rdns.adjust.com",
+            "https://example.de",
+            "https://example.fr",
+            "http://example.de",
+            "http://example.fr",
         ]
         actual = Core(
             use_official=False,

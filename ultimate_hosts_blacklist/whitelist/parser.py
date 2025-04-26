@@ -140,7 +140,11 @@ class Parser:
             if not self.no_complement and line.startswith("www."):
                 line = line[4:]
 
-            if not self.no_complement:
+            if (
+                not self.no_complement
+                and not line.startswith("http://")
+                and not line.startswith("https://")
+            ):
                 return ("strict", [line, "www.{0}".format(line)])
             return ("strict", [line])  # pragma: no cover
         return (None, line)
