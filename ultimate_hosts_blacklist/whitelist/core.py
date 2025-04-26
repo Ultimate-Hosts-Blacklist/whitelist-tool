@@ -9,9 +9,9 @@ License:
 
     MIT License
 
-    Copyright (c) 2018, 2019, 2020, 2020, 2021, 2022, 2023, 2024 Ultimate-Hosts-Blacklist Contributors
-    Copyright (c) 2018, 2019, 2020, 2020, 2021, 2022, 2023, 2024 Nissar Chababy
-    Copyright (c) 2019, 2020, 2021, 2022, 2023, 2024 Mitchell Krog
+    Copyright (c) 2018, 2019, 2020, 2020, 2021, 2022, 2023, 2024, 2025 Ultimate-Hosts-Blacklist Contributors
+    Copyright (c) 2018, 2019, 2020, 2020, 2021, 2022, 2023, 2024, 2025 Nissar Chababy
+    Copyright (c) 2019, 2020, 2021, 2022, 2023, 2024, 2025 Mitchell Krog
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to deal
@@ -32,10 +32,10 @@ License:
     SOFTWARE.
 """
 
+import copy
 import io
 import logging
 import sys
-import copy
 from itertools import filterfalse
 from multiprocessing import Pool
 from os import cpu_count
@@ -87,7 +87,10 @@ def _is_whitelisted(line, manifest):  # pylint: disable=too-many-branches
             else:
                 bare = to_check
 
-            if bare[:4] in manifest["strict"] and to_check in manifest["strict"][bare[:4]]:
+            if (
+                bare[:4] in manifest["strict"]
+                and to_check in manifest["strict"][bare[:4]]
+            ):
                 logging.debug(
                     "Line %s whitelisted by %s rule: %s.",
                     repr(line),
@@ -119,7 +122,9 @@ def _is_whitelisted(line, manifest):  # pylint: disable=too-many-branches
             if manifest["regex"] and RegexHelper(manifest["regex"]).match(
                 to_check, return_match=False
             ):
-                logging.debug("Line %s whitelisted by %s rule.", repr(line), repr("regex"))
+                logging.debug(
+                    "Line %s whitelisted by %s rule.", repr(line), repr("regex")
+                )
                 return True, line
 
     logging.debug("Line %s not whitelisted, no rule matched.", repr(line))
