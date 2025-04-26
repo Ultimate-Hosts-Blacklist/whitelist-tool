@@ -32,7 +32,6 @@ License:
     SOFTWARE.
 """
 
-import copy
 import io
 import logging
 import sys
@@ -418,7 +417,9 @@ class Core:  # pylint: disable=too-few-public-methods,too-many-arguments, too-ma
                     ]
                 )
 
-        if self.all_whitelist_list and isinstance(self.all_whitelist_list):
+        if self.all_whitelist_list and isinstance(
+            self.all_whitelist_list, (list, tuple)
+        ):
             result.extend(
                 [f'{Configuration.markers["all"]}{x}' for x in self.all_whitelist_list]
             )
@@ -445,7 +446,9 @@ class Core:  # pylint: disable=too-few-public-methods,too-many-arguments, too-ma
                     ]
                 )
 
-        if self.reg_whitelist_list and isinstance(self.reg_whitelist_list):
+        if self.reg_whitelist_list and isinstance(
+            self.reg_whitelist_list, (list, tuple)
+        ):
             result.extend(
                 [f'{Configuration.markers["all"]}{x}' for x in self.reg_whitelist_list]
             )
@@ -472,7 +475,9 @@ class Core:  # pylint: disable=too-few-public-methods,too-many-arguments, too-ma
                     ]
                 )
 
-        if self.rzd_whitelist_list and isinstance(self.rzd_whitelist_list):
+        if self.rzd_whitelist_list and isinstance(
+            self.rzd_whitelist_list, (list, tuple)
+        ):
             result.extend(
                 [
                     f'{Configuration.markers["root_zone_db"]}{x}'
